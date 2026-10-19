@@ -78,8 +78,16 @@ def container_bauen(ordner, p):
     elif typ == "foto":
         c = api("POST", f"{IG}/media", image_url=url_fuer(ordner, medien[0]), caption=p["caption"], **extra)
     elif typ == "reel":
-        c = api("POST", f"{IG}/media", media_type="REELS", video_url=url_fuer(ordner, medien[0]),
-                caption=p["caption"], share_to_feed="true", **extra)
+        if p.get("probe"):
+            # Probe-Reel (Trial Reel): erst nur für Nicht-Follower. "MANUAL" = Bea entscheidet in der App,
+            # "SS_PERFORMANCE" = Instagram zeigt es bei guter Performance automatisch auch den Followern.
+            extra["trial_params"] = {"graduation_strategy": p["probe"]}
+            extra.pop("collaborators", None)
+            c = api("POST", f"{IG}/media", media_type="REELS", video_url=url_fuer(ordner, medien[0]),
+                    caption=p["caption"], **extra)
+        else:
+            c = api("POST", f"{IG}/media", media_type="REELS", video_url=url_fuer(ordner, medien[0]),
+                    caption=p["caption"], share_to_feed="true", **extra)
     else:
         raise MetaFehler(f"Unbekannter Typ {typ}")
     warten_bis_fertig(c["id"])
@@ -94,6 +102,8 @@ def pruefen(p):
         probleme.append("mehr als 30 Hashtags")
     if p["typ"] == "karussell" and not 2 <= len(p["medien"]) <= 10:
         probleme.append("Karussell braucht 2 bis 10 Medien")
+    if p.get("probe") and (p["typ"] != "reel" or p["probe"] not in ("MANUAL", "SS_PERFORMANCE")):
+        probleme.append("Probe-Reel geht nur bei Reels, mit MANUAL oder SS_PERFORMANCE")
     if len(p.get("collaborators", [])) > 3:
         probleme.append("höchstens 3 Collab-Partner")
     if "{{" in p.get("caption", ""):
