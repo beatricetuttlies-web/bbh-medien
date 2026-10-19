@@ -31,5 +31,5 @@ jobs:
       - name: Ergebnisse sichern
         run: |
           git config user.name "BBH Automatik"; git config user.email "noreply@github.com"
-          git add -A warteschlange probe 2>/dev/null || true
+          git add -A .
           git diff --cached --quiet || (git commit -qm "Ergebnis $(date -u +%FT%H:%M)" && git pull -q --rebase && git push -q)
