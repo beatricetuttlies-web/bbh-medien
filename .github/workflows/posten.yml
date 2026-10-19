@@ -1,0 +1,35 @@
+name: Posten
+# Läuft alle 10 Minuten, postet fällige Posts aus warteschlange/ und hält das Ergebnis fest.
+on:
+  schedule:
+    - cron: "*/10 * * * *"
+  workflow_dispatch:
+    inputs:
+      trocken_ordner:
+        description: "Nur Trockenlauf für diesen Ordner (z. B. probe/2026-11-01-...), nichts wird veröffentlicht"
+        required: false
+permissions:
+  contents: write
+concurrency:
+  group: posten
+  cancel-in-progress: false
+jobs:
+  posten:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - name: Fällige Posts veröffentlichen
+        env:
+          META_TOKEN: ${{ secrets.META_TOKEN }}
+        run: |
+          if [ -n "${{ inputs.trocken_ordner }}" ]; then
+            python3 scripts/posten.py --trocken --ordner "${{ inputs.trocken_ordner }}"
+          else
+            python3 scripts/posten.py
+          fi
+      - name: Ergebnisse sichern
+        run: |
+          git config user.name "BBH Automatik"; git config user.email "noreply@github.com"
+          git add -A warteschlange probe 2>/dev/null || true
+          git diff --cached --quiet || (git commit -qm "Ergebnis $(date -u +%FT%H:%M)" && git pull -q --rebase && git push -q)
