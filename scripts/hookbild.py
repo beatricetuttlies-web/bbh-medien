@@ -18,7 +18,7 @@ from PIL import Image, ImageDraw, ImageFilter, ImageFont
 B, H = 1080, 1920
 PAPIER, TINTE, BORDEAUX = (247, 242, 232), (60, 40, 42), (90, 46, 50)
 GROESSE, ZEILE, BREITE_MAX = 66, 1.14, 860
-AHA_GROESSE, AHA_ZEILE, AHA_BREITE = 36, 1.38, 780
+AHA_GROESSE, AHA_ZEILE, AHA_BREITE = 42, 1.34, 840
 PAD_X, PAD_Y, AHA_PAD_Y, ABSTAND = 52, 34, 26, 22
 OBEN_Y, UNTEN_ABSTAND = 300, 520          # oben: unter der Instagram-Leiste; unten: über Caption und Knöpfen
 DAUER, AHA_AB = 6.0, 2.4
