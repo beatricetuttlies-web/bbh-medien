@@ -48,7 +48,7 @@ def bereitstellen(slot):
     import hookbild                     # erst hier: braucht Pillow, das der Workflow nur bei Bedarf installiert
     ziel = HT / "jetzt" / f"{slot['id']}.mp4"
     ziel.parent.mkdir(exist_ok=True)
-    hookbild.rendern(HT / slot["clip"], slot["hook"], ziel, slot.get("pos", "oben"), FONTS)
+    hookbild.rendern(HT / slot["clip"], slot["hook"], ziel, slot.get("pos", "oben"), FONTS, aha=slot.get("aha", ""))
     gestern = (jetzt() - datetime.timedelta(days=1)).date().isoformat()
     for alt in (HT / "jetzt").glob("*.mp4"):
         if alt.name[:10] < gestern:
@@ -62,7 +62,7 @@ def bereitstellen(slot):
         git("fetch", "-q", "origin", "hooktests")
         git("reset", "-q", "--hard", "origin/hooktests")
         ziel.parent.mkdir(exist_ok=True)
-        hookbild.rendern(HT / slot["clip"], slot["hook"], ziel, slot.get("pos", "oben"), FONTS)
+        hookbild.rendern(HT / slot["clip"], slot["hook"], ziel, slot.get("pos", "oben"), FONTS, aha=slot.get("aha", ""))
     else:
         raise MetaFehler("Push auf hooktests klappt nicht")
     url = BASIS + f"jetzt/{slot['id']}.mp4"
