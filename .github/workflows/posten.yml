@@ -1,5 +1,7 @@
 name: Posten
-# Läuft alle 10 Minuten, postet fällige Posts aus warteschlange/ und hält das Ergebnis fest.
+# Postet fällige Posts aus warteschlange/ und Probe-Reels aus dem Branch hooktests.
+# Seit 17.11.2026 als Dauerlauf: ein Lauf bleibt knapp 6 Stunden wach (scripts/dauerlauf.sh) und startet sich
+# danach selbst neu, weil GitHub die geplanten Starts oft nur alle paar Stunden ausführt.
 on:
   schedule:
     - cron: "*/10 * * * *"
@@ -10,40 +12,34 @@ on:
         required: false
 permissions:
   contents: write
+  actions: write
 concurrency:
   group: posten
   cancel-in-progress: false
 jobs:
   posten:
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 355
     steps:
       - uses: actions/checkout@v4
-      - name: Fällige Posts veröffentlichen
+      - name: Werkzeuge (ffmpeg, Pillow)
+        if: ${{ !inputs.trocken_ordner }}
+        run: |
+          (command -v ffmpeg && python3 -c "import PIL") >/dev/null 2>&1 || \
+            (sudo apt-get update -qq && sudo apt-get install -y -qq ffmpeg python3-pil >/dev/null)
+      - name: Trockenlauf
+        if: ${{ inputs.trocken_ordner }}
         env:
           META_TOKEN: ${{ secrets.META_TOKEN }}
-        run: |
-          if [ -n "${{ inputs.trocken_ordner }}" ]; then
-            python3 scripts/posten.py --trocken --ordner "${{ inputs.trocken_ordner }}"
-          else
-            python3 scripts/posten.py
-          fi
-      - name: Hook-Tests (Probe-Reels aus dem Branch hooktests)
+        run: python3 scripts/posten.py --trocken --ordner "${{ inputs.trocken_ordner }}"
+      - name: Dauerlauf (Posts und Probe-Reels, alle 5 Minuten)
         if: ${{ !inputs.trocken_ordner }}
         env:
           META_TOKEN: ${{ secrets.META_TOKEN }}
-        run: |
-          if git fetch -q --depth 1 origin hooktests:refs/remotes/origin/hooktests 2>/dev/null; then
-            git worktree add -q --detach ht origin/hooktests
-            if python3 scripts/hooktest_posten.py --faellig; then
-              (command -v ffmpeg && python3 -c "import PIL") >/dev/null 2>&1 || \
-                (sudo apt-get update -qq && sudo apt-get install -y -qq ffmpeg python3-pil >/dev/null)
-            fi
-            python3 scripts/hooktest_posten.py
-            git worktree remove --force ht
-          fi
-      - name: Ergebnisse sichern
-        run: |
-          git config user.name "BBH Automatik"; git config user.email "noreply@github.com"
-          git add -A .
-          git diff --cached --quiet || (git commit -qm "Ergebnis $(date -u +%FT%H:%M)" && git pull -q --rebase && git push -q)
+          DAUER_MIN: "340"
+        run: bash scripts/dauerlauf.sh
+      - name: Neu starten
+        if: ${{ !inputs.trocken_ordner && !cancelled() }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh workflow run posten.yml --ref main -R "${{ github.repository }}"
