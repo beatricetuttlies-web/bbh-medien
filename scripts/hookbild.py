@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Hook-Bild für Probe-Reels: ein 6-Sekunden-Clip, darauf der Hook auf einer Papierplatte und ab 2,4 s darunter
+"""Hook-Bild für Probe-Reels: ein 6-Sekunden-Clip, darauf der Hook auf einer Papierplatte und darunter
 der Aha-Satz des Tages (kleiner, Montserrat). Der Hook macht neugierig, der Aha-Satz sagt, worum es geht.
 
 Diese Datei gibt es zweimal, identisch: hier und in bbh-medien/scripts/hookbild.py (dort rendert GitHub kurz vor dem
@@ -21,7 +21,7 @@ GROESSE, ZEILE, BREITE_MAX = 66, 1.14, 860
 AHA_GROESSE, AHA_ZEILE, AHA_BREITE = 42, 1.34, 840
 PAD_X, PAD_Y, AHA_PAD_Y, ABSTAND = 52, 34, 26, 22
 OBEN_Y, UNTEN_ABSTAND = 300, 520          # oben: unter der Instagram-Leiste; unten: über Caption und Knöpfen
-DAUER, AHA_AB = 6.0, 2.4
+DAUER, AHA_AB = 6.0, 0.0   # seit 18.11.2026: Text steht ab dem ersten Bild (Beas Wunsch)
 
 
 def fonts_ordner(arg=None):
@@ -129,16 +129,17 @@ def rendern(clip, text, aus, pos="oben", fonts=None, aha=""):
         p1, p2 = pathlib.Path(tmp) / "hook.png", pathlib.Path(tmp) / "aha.png"
         hook.save(p1)
         eingaben = ["-loop", "1", "-framerate", "30", "-i", str(p1)]
-        filt = "[1]format=rgba,fade=in:st=0:d=0.2:alpha=1[o1];[0:v][o1]overlay=0:0:shortest=1[v1]"
+        filt = "[1]format=rgba[o1];[0:v][o1]overlay=0:0:shortest=1[v1]"
         if ahabild:
             ahabild.save(p2)
             eingaben += ["-loop", "1", "-framerate", "30", "-i", str(p2)]
-            filt += f";[2]format=rgba,fade=in:st={AHA_AB}:d=0.3:alpha=1[o2];[v1][o2]overlay=0:0:shortest=1[v2]"
+            filt += ";[2]format=rgba[o2];[v1][o2]overlay=0:0:shortest=1[v2]"
         filt += f";[{'v2' if ahabild else 'v1'}]format=yuv420p[v]"
-        ton = subprocess.run(["ffprobe", "-v", "error", "-select_streams", "a", "-show_entries", "stream=index",
-                              "-of", "csv=p=0", str(clip)], capture_output=True, text=True).stdout.strip()
-        cmd = ["ffmpeg", "-y", "-v", "error", "-i", str(clip), *eingaben, "-filter_complex", filt, "-map", "[v]"] + \
-              (["-map", "0:a", "-c:a", "aac", "-b:a", "128k"] if ton else []) + \
+        # Ton raus (seit 18.11.2026, Beas Wunsch): stille Tonspur statt Originalton, damit Instagram eine Tonspur hat
+        stumm = len(eingaben) // 6 + 1
+        eingaben += ["-f", "lavfi", "-t", str(DAUER), "-i", "anullsrc=r=48000:cl=stereo"]
+        cmd = ["ffmpeg", "-y", "-v", "error", "-i", str(clip), *eingaben, "-filter_complex", filt, "-map", "[v]",
+               "-map", f"{stumm}:a", "-c:a", "aac", "-b:a", "128k"] + \
               ["-t", str(DAUER), "-c:v", "libx264", "-preset", "medium", "-crf", "21", "-r", "30",
                "-movflags", "+faststart", str(aus)]
         subprocess.run(cmd, check=True)
