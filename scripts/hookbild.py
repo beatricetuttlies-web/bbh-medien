@@ -17,7 +17,7 @@ from PIL import Image, ImageDraw, ImageFilter, ImageFont
 
 B, H = 1080, 1920
 PAPIER, TINTE, BORDEAUX = (247, 242, 232), (60, 40, 42), (90, 46, 50)
-GROESSE, ZEILE, BREITE_MAX = 66, 1.14, 860
+GROESSE, ZEILE, BREITE_MAX = 76, 1.14, 860   # kurze Hooks (3 bis 7 Wörter), größer gesetzt
 AHA_GROESSE, AHA_ZEILE, AHA_BREITE = 42, 1.34, 840
 PAD_X, PAD_Y, AHA_PAD_Y, ABSTAND = 52, 34, 26, 22
 OBEN_Y, UNTEN_ABSTAND = 300, 520          # oben: unter der Instagram-Leiste; unten: über Caption und Knöpfen
@@ -106,7 +106,8 @@ def ebenen(text, aha="", pos="oben", fonts=None):
         a_pb = int(max(b for _, b in a_zeilen)) + 2 * PAD_X
         a_ph = a_zh * len(a_zeilen) + 2 * AHA_PAD_Y
     gesamt = ph + (ABSTAND + a_ph if aha else 0)
-    y0 = OBEN_Y if pos == "oben" else H - UNTEN_ABSTAND - gesamt
+    # seit 18.11.2026 (Beas Regel): immer mittig in der Safe Zone, egal was in pos steht
+    y0 = (H - gesamt) // 2 - 40
     hook = platte(Image.new("RGBA", (B, H), (0, 0, 0, 0)), (B - pb) // 2, y0, pb, ph)
     text_setzen(hook, zeilen, leer, y0 + PAD_Y, zh, normal, kursiv, TINTE, BORDEAUX, 0.08)
     if not aha:
